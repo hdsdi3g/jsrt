@@ -1,8 +1,4 @@
-bin
-build
-*.swp
-.classpath
+/bin
 .project
-.settings
-.gradle
-dist
+org.eclipse.jdt.core.prefs
+.classpath

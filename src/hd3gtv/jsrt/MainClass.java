@@ -19,6 +19,8 @@ package hd3gtv.jsrt;
 import hd3gtv.tools.ApplicationArgs;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
 
@@ -27,6 +29,7 @@ import org.fredy.jsrt.api.SRTInfo;
 import org.fredy.jsrt.api.SRTReader;
 import org.fredy.jsrt.api.SRTTimeFormat;
 import org.fredy.jsrt.api.SRTWriter;
+import org.mozilla.universalchardet.UniversalDetector;
 
 public class MainClass {
 	
@@ -34,10 +37,10 @@ public class MainClass {
 		try {
 			ApplicationArgs aargs = new ApplicationArgs(args);
 			
-			Charset source_charset = Charset.forName("UTF-8");
-			if (aargs.getParamExist("-iso")) {
-				source_charset = Charset.forName("ISO-8859-1");
-			}
+			File sourcefile = new File(aargs.getSimpleParamValue("-i"));
+			Charset source_charset = Charset.forName(detectCharset(sourcefile));
+			
+			System.out.println("Detected charset encoding:\t" + source_charset.name());
 			
 			float rate_factor = 1f;
 			if (aargs.getParamExist("-ifps") | aargs.getParamExist("-ofps")) {
@@ -51,7 +54,7 @@ public class MainClass {
 				offset = Float.valueOf(aargs.getSimpleParamValue("-offset"));
 			}
 			
-			SRTInfo source = SRTReader.read(new File(aargs.getSimpleParamValue("-i")), source_charset);
+			SRTInfo source = SRTReader.read(sourcefile, source_charset);
 			
 			if (aargs.getParamExist("-first") & aargs.getParamExist("-last")) {
 				float real_first_sub = SRTTimeFormat.parse(aargs.getSimpleParamValue("-first"));
@@ -90,14 +93,29 @@ public class MainClass {
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.err.println();
-			System.err.println("Usage: -i <inputfile.srt> [-o <outputfile.srt>] [-iso] [-ifps n -ofps n] [-offset n]");
-			System.err.println("Or:    -i <inputfile.srt> [-o <outputfile.srt>] [-iso] [-first t -last t]");
-			System.err.println(" -iso force to interpret source file in ISO-8859-1 encoding");
+			System.err.println("Usage: -i <inputfile.srt> [-o <outputfile.srt>] [-ifps n -ofps n] [-offset n]");
+			System.err.println("Or:    -i <inputfile.srt> [-o <outputfile.srt>] [-first t -last t]");
 			System.err.println(" -ifps n (float in frames per second) input fps source");
 			System.err.println(" -ofps n (float in frames per second) output fps for destination");
 			System.err.println(" -offset n (float in second) set an temporal offset for all subtitles");
 			System.err.println(" -first t (time HH:MM:SS,MSEC) set the real time for the first subtitle");
 			System.err.println(" -last t (time HH:MM:SS,MSEC) set the real time for the last subtitle");
+			System.err.println("Always detect source charset and convert it to UTF-8");
 		}
+	}
+	
+	public static String detectCharset(File sourcefile) throws IOException {
+		byte[] buf = new byte[4096];
+		FileInputStream fis = new FileInputStream(sourcefile);
+		
+		UniversalDetector detector = new UniversalDetector(null);
+		
+		int nread;
+		while ((nread = fis.read(buf)) > 0 && !detector.isDone()) {
+			detector.handleData(buf, 0, nread);
+		}
+		detector.dataEnd();
+		fis.close();
+		return detector.getDetectedCharset();
 	}
 }

@@ -16,8 +16,6 @@
 */
 package hd3gtv.jsrt;
 
-import hd3gtv.tools.ApplicationArgs;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -30,6 +28,8 @@ import org.fredy.jsrt.api.SRTReader;
 import org.fredy.jsrt.api.SRTTimeFormat;
 import org.fredy.jsrt.api.SRTWriter;
 import org.mozilla.universalchardet.UniversalDetector;
+
+import hd3gtv.tools.ApplicationArgs;
 
 public class MainClass {
 	
@@ -50,31 +50,35 @@ public class MainClass {
 			}
 			
 			float offset = 0f;
-			if (aargs.getParamExist("-offset")) {
-				offset = Float.valueOf(aargs.getSimpleParamValue("-offset"));
+			if (aargs.getParamExist("-pos-offset")) {
+				offset = Float.valueOf(aargs.getSimpleParamValue("-pos-offset"));
+			}
+			if (aargs.getParamExist("-neg-offset")) {
+				offset = -Float.valueOf(aargs.getSimpleParamValue("-neg-offset"));
 			}
 			
 			SRTInfo source = SRTReader.read(sourcefile, source_charset);
 			
-			if (aargs.getParamExist("-first") & aargs.getParamExist("-last")) {
+			if (aargs.getParamExist("-first")) {
 				float real_first_sub = SRTTimeFormat.parse(aargs.getSimpleParamValue("-first"));
-				float real_last_sub = SRTTimeFormat.parse(aargs.getSimpleParamValue("-last"));
 				float file_first_sub = source.getFirst().startTime;
-				float file_last_sub = source.getLast().startTime;
-				
 				System.out.println("First subtitle time in file:\t" + file_first_sub + " sec");
 				System.out.println("First subtitle time wanted:\t" + real_first_sub + " sec");
-				System.out.println("Last subtitle time in file:\t" + file_last_sub + " sec");
-				System.out.println("Last subtitle time wanted:\t" + real_last_sub + " sec");
-				System.out.println();
-				
 				offset = real_first_sub - file_first_sub;
-				file_last_sub = file_last_sub + offset;
-				rate_factor = real_last_sub / file_last_sub;
+				
+				if (aargs.getParamExist("-last")) {
+					float real_last_sub = SRTTimeFormat.parse(aargs.getSimpleParamValue("-last"));
+					float file_last_sub = source.getLast().startTime;
+					System.out.println("Last subtitle time in file:\t" + file_last_sub + " sec");
+					System.out.println("Last subtitle time wanted:\t" + real_last_sub + " sec");
+					System.out.println();
+					file_last_sub = file_last_sub + offset;
+					rate_factor = real_last_sub / file_last_sub;
+				}
 			}
 			
 			if (offset != 0f) {
-				System.out.println("Offset to apply:\t\t\t\t" + offset + " sec");
+				System.out.println("Offset to apply:\t\t" + offset + " sec");
 			}
 			if (rate_factor != 1f) {
 				System.out.println("Rate factor to apply for each subtitle:\t\t" + rate_factor);
@@ -97,11 +101,13 @@ public class MainClass {
 			System.err.println("Or:    -i <inputfile.srt> [-o <outputfile.srt>] [-first t -last t]");
 			System.err.println(" -ifps n (float in frames per second) input fps source");
 			System.err.println(" -ofps n (float in frames per second) output fps for destination");
-			System.err.println(" -offset n (float in second) set an temporal offset for all subtitles");
+			System.err.println(" -pos-offset n (float in second) add a temporal offset for all subtitles");
+			System.err.println(" -neg-offset n (float in second) subtract a temporal offset for all subtitles");
 			System.err.println(" -first t (time HH:MM:SS,MSEC) set the real time for the first subtitle");
 			System.err.println(" -last t (time HH:MM:SS,MSEC) set the real time for the last subtitle");
 			System.err.println("Always detect source charset and convert it to UTF-8");
 		}
+		
 	}
 	
 	public static String detectCharset(File sourcefile) throws IOException {
